@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% block title %}成绩列表{% endblock %}
+{% block mystyle %}
+    <style>
+        #slecet_exam{margin-bottom: 20px;}
+        #save_info{color: red}
+    </style>
+{% endblock %}
+{% block content %}
+    <div class="container">
+        <div class="row">
+            <div class="col-md-4">
+                <select id="slecet_exam" class="form-control" name="exam_id">
+                {% for exam in exams %}
+                <option value="{{ exam.id }}">{{ exam.exam_name }}</option>
+                {% endfor %}
+            </select>
+            </div>
+            <div class="col-md-1">
+                <button id="tongji" type="button" class="btn btn-primary">统计</button>
+            </div>
+            <div class="col-md-4">
+                <span>优秀率：</span>
+                <label class="radio-inline">
+                  <input type="radio" name="youxiulv" id="inlineRadio1" value="85" checked> 85分以上
+                </label>
+                <label class="radio-inline">
+                  <input type="radio" name="youxiulv" id="inlineRadio2" value="90"> 90分以上
+                </label>
+                <label class="radio-inline">
+                  <input type="radio" name="youxiulv" id="inlineRadio3" value="95"> 95分以上
+                </label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <table tag="{{ s_scores[0].exam_id }}" id="score_list" class="table table-striped table-bordered">
+                    <tr>
+                        <td>序号</td>
+                        <td>姓名</td>
+                        <td>成绩</td>
+                        <td>操作</td>
+                    </tr>
+                    {% for s_score in s_scores %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ s_score.name }}</td>
+                            <td>{{ s_score.score }}</td>
+                            <td>
+                                <button tag='{{ s_score.id }}' type="button" class="btn btn-primary btn-xs modify_stu">修改</button>
+                                <button tag='{{ s_score.id }}' type="button" class="btn btn-danger btn-xs del_stu">删除</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </table>
+                <div><button id="add_stu" type="button" class="btn btn-primary btn-xs">增加</button></div>
+            </div>
+            <div class="col-md-3">
+                <table id="tongji_list" class="table table-striped table-bordered">
+
+                </table>
+                <div id="save_tongji"></div>
+                <div><span id="save_info"></span></div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block myscript %}
+    <script>
+        $('#slecet_exam').change(function () {
+            $('#score_list').text('')
+            $('#tongji_list').text('')
+            $('#save_tongji').text('')
+            $('#save_info').text('')
+            var exam_id=$(this).val()
+            $.get('{{ url_for('score.sel_score_list') }}',{exam_id:exam_id},function (data) {
+                $('#score_list').append('<tbody>')
+                $('#score_list').append('<tr><td>序号</td><td>姓名</td><td>成绩</td><td>操作</td></tr>')
+                for(var i=0;i<data.score_list.length;i++){
+                    $('#score_list').append('<tr><td>'+(i+1)+'</td><td>'+data.score_list[i].name+'</td><td>'+data.score_list[i].score+'</td><td><button type="button" class="btn btn-primary btn-xs modify_stu" tag='+data.score_list[i].id+'>修改</button>&nbsp;<button type="button" class="btn btn-danger btn-xs del_stu" tag='+data.score_list[i].id+'>删除</button></td></tr>')
+                    $('#score_list').attr('tag',data.score_list[i].exam_id)
+                }
+                $('#score_list').append('</tbody>')
+            })
+        })
+
+        $('#score_list').on('click','.modify_stu',function () {
+            var score_id=$(this).attr('tag')
+            location.href='/score/modify_score?score_id='+score_id
+        })
+        $('#score_list').on('click','.del_stu',function () {
+            var score_id=$(this).attr('tag')
+            flag=confirm('确定要删除这个学生成绩吗？')
+            if(flag){
+                $('#score_list').text('')
+                $.get('{{ url_for('score.del_score') }}',{score_id:score_id},function (data) {
+                    $('#score_list').append('<tbody>')
+                    $('#score_list').append('<tr><td>序号</td><td>姓名</td><td>成绩</td><td>操作</td></tr>')
+                    for(var i=0;i<data.score_list.length;i++){
+                        $('#score_list').append('<tr><td>'+(i+1)+'</td><td>'+data.score_list[i].name+'</td><td>'+data.score_list[i].score+'</td><td><button type="button" class="btn btn-primary btn-xs modify_stu" tag='+data.score_list[i].id+'>修改</button>&nbsp;<button type="button" class="btn btn-danger btn-xs del_stu" tag='+data.score_list[i].id+'>删除</button></td></tr>')
+                        $('#score_list').attr('tag',data.score_list[i].exam_id)
+                    }
+                    $('#score_list').append('</tbody>')
+                })
+            }
+        })
+        $('#add_stu').click(function () {
+            var exam_id=$('#slecet_exam').val()
+            location.href='/score/add_score?exam_id='+exam_id
+        })
+
+        function toPercent(point){              /* 小数转百分数 */
+            var str=Number(point*100).toFixed(2);
+            str+="%";
+            return str;
+        }
+        $('#tongji').click(function () {
+            var exam_id=$('#score_list').attr('tag')
+            var youxiulv=$("input:radio[name='youxiulv']:checked").val()
+            $('#tongji_list').text('')
+            $('#save_tongji').text('')
+            $('#save_info').text('')
+            $.get('{{ url_for('score.tongji') }}',{exam_id:exam_id,youxiulv:youxiulv},function (data) {
+                $('#tongji_list').append('<tbody>')
+                $('#tongji_list').append('<tr><td>考试人数</td><td id="s_num">'+data.s_num+'</td></tr>')
+                $('#tongji_list').append('<tr><td>总分</td><td id="s_total">'+data.s_total+'</td></tr>')
+                $('#tongji_list').append('<tr><td>平均分</td><td id="s_everage">'+data.s_everage.toFixed(2)+'</td></tr>')
+                $('#tongji_list').append('<tr><td>优秀率</td><td id="s_youxiu">'+toPercent(data.s_youxiu.toFixed(4))+'</td></tr>')
+                $('#tongji_list').append('<tr><td>合格率</td><td id="s_hege">'+toPercent(data.s_hege.toFixed(4))+'</td></tr>')
+                $('#tongji_list').append('<tr><td>最高分</td><td  id="s_max">'+data.s_max+'</td></tr>')
+                $('#tongji_list').append('<tr><td>最低分</td><td id="s_min">'+data.s_min+'</td></tr>')
+                $('#tongji_list').append('<tr><td>60分以下人数</td><td id="down_60">'+data.down_60+'</td></tr>')
+                $('#tongji_list').append('<tr><td>60-70分人数</td><td id="num60_70">'+data.num60_70+'</td></tr>')
+                $('#tongji_list').append('<tr><td>70-80分人数</td><td id="num70_80">'+data.num70_80+'</td></tr>')
+                $('#tongji_list').append('<tr><td>80-90分人数</td><td id="num80_90">'+data.num80_90+'</td></tr>')
+                $('#tongji_list').append('<tr><td>90-100分人数</td><td id="num90_100">'+data.num90_100+'</td></tr>')
+                $('#tongji_list').append('</tbody>')
+                $('#save_tongji').append('<button id="add_db" type="button" class="btn btn-primary btn-xs">保存统计数据</button>')
+                $('#s_youxiu').attr('tag',data.s_youxiu)
+                $('#s_hege').attr('tag',data.s_hege)
+            })
+        })
+        $("input:radio[name='youxiulv']").change(function () {
+            var exam_id=$('#score_list').attr('tag')
+            var youxiulv=$("input:radio[name='youxiulv']:checked").val()
+            $('#tongji_list').text('')
+            $('#save_tongji').text('')
+            $('#save_info').text('')
+            $.get('{{ url_for('score.tongji') }}',{exam_id:exam_id,youxiulv:youxiulv},function (data) {
+                $('#tongji_list').append('<tbody>')
+                $('#tongji_list').append('<tr><td>考试人数</td><td id="s_num">'+data.s_num+'</td></tr>')
+                $('#tongji_list').append('<tr><td>总分</td><td id="s_total">'+data.s_total+'</td></tr>')
+                $('#tongji_list').append('<tr><td>平均分</td><td id="s_everage">'+data.s_everage.toFixed(2)+'</td></tr>')
+                $('#tongji_list').append('<tr><td>优秀率</td><td id="s_youxiu">'+toPercent(data.s_youxiu.toFixed(4))+'</td></tr>')
+                $('#tongji_list').append('<tr><td>合格率</td><td id="s_hege">'+toPercent(data.s_hege.toFixed(4))+'</td></tr>')
+                $('#tongji_list').append('<tr><td>最高分</td><td id="s_max">'+data.s_max+'</td></tr>')
+                $('#tongji_list').append('<tr><td>最低分</td><td id="s_min">'+data.s_min+'</td></tr>')
+                $('#tongji_list').append('<tr><td>60分以下人数</td><td id="down_60">'+data.down_60+'</td></tr>')
+                $('#tongji_list').append('<tr><td>60-70分人数</td><td id="num60_70">'+data.num60_70+'</td></tr>')
+                $('#tongji_list').append('<tr><td>70-80分人数</td><td id="num70_80">'+data.num70_80+'</td></tr>')
+                $('#tongji_list').append('<tr><td>80-90分人数</td><td id="num80_90">'+data.num80_90+'</td></tr>')
+                $('#tongji_list').append('<tr><td>90-100分人数</td><td id="num90_100">'+data.num90_100+'</td></tr>')
+                $('#tongji_list').append('</tbody>')
+                $('#save_tongji').append('<button id="add_db" type="button" class="btn btn-primary btn-xs">保存统计数据</button>')
+                $('#s_youxiu').attr('tag',data.s_youxiu)
+                $('#s_hege').attr('tag',data.s_hege)
+            })
+        })
+        $('#save_tongji').on('click','#add_db',function () {
+            var s_num=$('#s_num').text()
+            var s_total=$('#s_total').text()
+            var s_everage=$('#s_everage').text()
+            var s_youxiu=$('#s_youxiu').attr('tag')
+            var s_hege=$('#s_hege').attr('tag')
+            var s_max=$('#s_max').text()
+            var s_min=$('#s_min').text()
+            var down_60=$('#down_60').text()
+            var num60_70=$('#num60_70').text()
+            var num70_80=$('#num70_80').text()
+            var num80_90=$('#num80_90').text()
+            var num90_100=$('#num90_100').text()
+            var exam_id=$('#score_list').attr('tag')
+            $.get('{{ url_for('score.save_tongji') }}',{s_num:s_num,s_total:s_total,s_everage:s_everage,s_youxiu:s_youxiu,s_hege:s_hege,s_max:s_max,s_min:s_min,down_60:down_60,num60_70:num60_70,num70_80:num70_80,num80_90:num80_90,num90_100:num90_100,exam_id:exam_id},function (data) {
+                $('#save_info').text(data.msg)
+            })
+        })
+    </script>
+{% endblock %}
