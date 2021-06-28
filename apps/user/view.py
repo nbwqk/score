@@ -1,3 +1,5 @@
+from urllib.parse import urlparse, urljoin
+
 from flask import Blueprint, request, render_template, redirect, url_for, flash, jsonify, abort, views
 from flask_login import login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -7,6 +9,18 @@ from apps.user.model import User, Clazz, Course
 from exts import db, login_manager
 
 user_bp=Blueprint('user',__name__,url_prefix='/user')
+
+def is_safe_url(target):
+    ref_url = urlparse(request.host_url)
+    test_url = urlparse(urljoin(request.host_url, target))
+    return test_url.scheme in ('http', 'https') and \
+           ref_url.netloc == test_url.netloc
+
+def redirect_back(default='score.add_exam', **kwargs):
+    next=request.args.get('next')
+    if next is not None and is_safe_url(next):
+        return redirect(next)
+    return redirect(url_for(default, **kwargs))
 
 @login_manager.user_loader
 def loader_user(user_id):
@@ -37,18 +51,20 @@ def register():
 @user_bp.route('/login',methods=['GET','POST'])
 def login():
     form=LoginForm()
+    if request.method=='GET':
+        next=request.args.get('next')
     if request.method=='POST':
         if form.validate_on_submit():
             phone=form.phone.data
             password=form.password.data
             user=User.query.filter(User.phone==phone).first()
-            if user:
+            if user and user.isforbid==0:
                 if check_password_hash(user.password,password):
                     login_user(user)
                     flash('登录成功！')
-                    return redirect(url_for('score.add_exam'))
+                    return redirect_back()
             flash('登录失败！')
-    return render_template('user/login.html',form=form)
+    return render_template('user/login.html',form=form,next=next)
 
 @user_bp.route('/logout')
 @login_required
@@ -77,7 +93,7 @@ def login_required_admin(func):
             return redirect(url_for('user.login'))
     return inner
 
-@user_bp.route('/admin')
+@user_bp.route('/admin',endpoint='admin')
 @login_required_admin
 def admin():
     users=User.query.all()

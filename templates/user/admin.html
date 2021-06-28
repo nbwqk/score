@@ -11,12 +11,20 @@
         #a{
             color: blue;
         }
+        .flash{
+            color: red;
+        }
     </style>
 {% endblock %}
 {% block content %}
 <div class="container">
     <div class="row">
         <div class="col-md-12">
+            <div>
+              {% for message in get_flashed_messages() %}
+                  <div class="flash">{{ message }}</div>
+              {% endfor %}
+            </div>
             <ul class="nav nav-tabs">
               <li role="presentation" id="m_clazz"><a href="#" >班级管理</a></li>
               <li role="presentation" id="m_course"><a href="#" >课程管理</a></li>

@@ -44,9 +44,13 @@ def add_exam():
 @score_bp.route('/',methods=['GET','POST'])
 @login_required
 def index():
-    exam_id=int(request.args.get('exam_id'))
-    exams=Exam.query.filter(Exam.user_id==current_user.id).all()
-    form=ScoreForm()
+    form = ScoreForm()
+    if request.method=='GET':
+        exam_id=request.args.get('exam_id')
+        if exam_id is None:
+            abort(500)
+        exam_id=int(exam_id)
+        exams=Exam.query.filter(Exam.user_id==current_user.id).all()
     if request.method=='POST':
         if form.validate_on_submit():
             exam_id=form.exam_id.data
@@ -76,7 +80,7 @@ def index():
                 db.session.add(s)
                 db.session.commit()
             return redirect(url_for('score.score_list')+'?exam_id='+str(exam_id))
-    return render_template('score/index.html',exams=exams,form=form,exam_id=exam_id)
+    return render_template('score/index.html', exams=exams, form=form, exam_id=exam_id)
 
 @score_bp.route('/exam')
 def exam():
